@@ -22,3 +22,14 @@
  .cal19-entry{display:grid;grid-template-columns:14mm 1fr;gap:2mm;font-size:9px;padding:2mm 0;border-bottom:1px dotted #dae1e6}
  .cal19-sunday{font-size:9px;margin-top:3mm}
 }
+
+@media print {
+ html,body{height:auto!important;min-height:0!important;overflow:visible!important;margin:0!important;padding:0!important;background:#fff!important}
+ body > :not(#printSheet){display:none!important}
+ #printSheet{display:block!important;position:static!important;inset:auto!important;top:auto!important;left:auto!important;width:100%!important;max-width:none!important;min-height:0!important;height:auto!important;padding:0!important;margin:0!important}
+ #printSheet footer{display:none!important}
+ #printSheet header{margin:0 0 4mm!important;padding:0 0 3mm!important;break-after:avoid!important;page-break-after:avoid!important}
+ .cal19-printpage{margin:0!important;padding:0!important;break-inside:auto!important;page-break-inside:auto!important}
+ .cal19-printgrid{grid-template-rows:repeat(3,58mm)!important;gap:3mm!important}
+ .cal19-printday{overflow:hidden!important}
+}
