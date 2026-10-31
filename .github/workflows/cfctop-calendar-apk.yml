@@ -2,7 +2,7 @@ name: CFC Top Instrutor 1.3.9 Calendario e PDF
 on:
   push:
     branches: [cfctop-calendar-20261031]
-    paths: [artifacts/CFCTop-Instrutor-1.3.9-source.base64]
+    paths: ['artifacts/**', 'patches/**', '.github/workflows/cfctop-calendar-apk.yml']
   workflow_dispatch:
 jobs:
   apk:
@@ -20,24 +20,47 @@ jobs:
         run: |
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
-      - name: Conferir fontes
+      - name: Recuperar fontes preservados e aplicar calendario
         run: |
           base64 -d artifacts/CFCTop-Instrutor-1.3.9-source.base64 > source.zip
-          echo '1881a5ba8a59994312c92feec19ccbbfafe689cd01a857a39548826b2a6af969  source.zip' | sha256sum -c -
+          echo "23a520b188244900616ab9896ab265baa936cfe9ec29f58fc5c6c61c518fcd47  source.zip" | sha256sum -c -
           unzip -q source.zip
-          test -f CFC-Top-Instrutor-1.3.9/app/src/main/assets/app.js
-          grep -q 'print-week-grid' CFC-Top-Instrutor-1.3.9/app/src/main/assets/app.js
-      - name: Compilar APK
+          mv CFC-Top-Instrutor-1.3.8 CFC-Top-Instrutor-1.3.9
+          cp patches/calendario-1.3.9.js CFC-Top-Instrutor-1.3.9/app/src/main/assets/calendario-1.3.9.js
+          cp patches/calendario-1.3.9.css CFC-Top-Instrutor-1.3.9/app/src/main/assets/calendario-1.3.9.css
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('CFC-Top-Instrutor-1.3.9')
+          a=root/'app/src/main/assets'
+          p=a/'index.html'
+          h=p.read_text()
+          assert '<script src="app.js"></script>' in h
+          h=h.replace('<link rel="stylesheet" href="style.css">','<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="calendario-1.3.9.css">')
+          h=h.replace('<script src="app.js"></script>','<script src="app.js"></script><script src="calendario-1.3.9.js"></script>')
+          h=h.replace('v1.3.8','v1.3.9')
+          p.write_text(h)
+          p=a/'app.js';s=p.read_text();assert "function renderSlots(rows)" in s
+          s=s.replace("const VERSION='1.3.8';","const VERSION='1.3.9';")
+          s=s.replace("if(!['today','tomorrow'].includes(tab))","if(!['today','tomorrow','day'].includes(tab))")
+          p.write_text(s)
+          p=root/'app/build.gradle';s=p.read_text()
+          assert "versionCode 138" in s
+          s=s.replace("versionCode 138","versionCode 139").replace("versionName '1.3.8'","versionName '1.3.9'").replace("applicationIdSuffix '.teste138'","applicationIdSuffix '.teste139'")
+          p.write_text(s)
+          PY
+          test -f CFC-Top-Instrutor-1.3.9/app/src/main/assets/calendario-1.3.9.js
+      - name: Compilar APK Android
         working-directory: CFC-Top-Instrutor-1.3.9
         run: gradle --no-daemon assembleDebug
-      - name: Validar APK
+      - name: Verificar APK e assinatura
         run: |
           APK=$(find CFC-Top-Instrutor-1.3.9/app/build/outputs/apk/debug -name '*.apk' | head -1)
           test -s "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | head -8
       - uses: actions/upload-artifact@v4
         with:
           name: CFC-Top-Instrutor-1.3.9-APK-CALENDARIO
           path: CFC-Top-Instrutor-1.3.9/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+          retention-days: 30
